@@ -9,6 +9,7 @@ import copy
 from typing import Dict, List, Tuple, Set, Optional
 from functools import partial
 
+import torch
 from torchcrf import CRF
 from pytorch_transformers import *
 
@@ -57,7 +58,7 @@ class MultiHeadSelection(nn.Module):
                                    batch_first=True)
             self.encoder = BertModel.from_pretrained('bert-base-uncased')
             for name, param in self.encoder.named_parameters():
-                if '11' in name:
+                if '11' in name:  # only update last layer
                     param.requires_grad = True
                 else:
                     param.requires_grad = False
@@ -125,9 +126,15 @@ class MultiHeadSelection(nn.Module):
 
     def forward(self, sample, is_train: bool) -> Dict[str, torch.Tensor]:
 
-        tokens = sample.tokens_id.cuda(self.gpu)
-        selection_gold = sample.selection_id.cuda(self.gpu)
-        bio_gold = sample.bio_id.cuda(self.gpu)
+        import pdb;pdb.set_trace()
+        if self.gpu == -1:
+            tokens = sample.tokens_id
+            selection_gold = sample.selection_id
+            bio_gold = sample.bio_id
+        else:
+            tokens = sample.tokens_id.cuda(self.gpu)
+            selection_gold = sample.selection_id.cuda(self.gpu)
+            bio_gold = sample.bio_id.cuda(self.gpu)
 
         text_list = sample.text
         spo_gold = sample.spo_gold
@@ -188,7 +195,10 @@ class MultiHeadSelection(nn.Module):
             for line in temp_tag:
                 line.extend([self.bio_vocab['<pad>']] *
                             (self.hyper.max_text_len - len(line)))
-            bio_gold = torch.tensor(temp_tag).cuda(self.gpu)
+            if self.gpu == -1:
+                bio_gold = torch.tensor(temp_tag)
+            else:
+                bio_gold = torch.tensor(temp_tag).cuda(self.gpu)
 
         tag_emb = self.bio_emb(bio_gold)
 
@@ -200,7 +210,7 @@ class MultiHeadSelection(nn.Module):
         v = self.activation(self.selection_v(o)).unsqueeze(2).expand(B, L, L, -1)
         uv = self.activation(self.selection_uv(torch.cat((u, v), dim=-1)))
 
-        # correct one
+        # correct one, map to relation cls
         selection_logits = torch.einsum('bijh,rh->birj', uv,
                                         self.relation_emb.weight)
 

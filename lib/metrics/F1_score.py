@@ -2,6 +2,7 @@ from typing import Dict, List, Tuple, Set, Optional
 from abc import ABC, abstractmethod
 from overrides import overrides
 
+# maybe wrong~, eval for 'char'
 
 class F1_abc(object):
     def __init__(self):
@@ -18,8 +19,7 @@ class F1_abc(object):
         if reset:
             self.reset()
 
-        f1, p, r = 2 * self.A / (self.B +
-                                 self.C), self.A / self.B, self.A / self.C
+        f1, p, r = 2 * self.A / (self.B + self.C), self.A / self.B, self.A / self.C
         result = {"precision": p, "recall": r, "fscore": f1}
 
         return result
@@ -63,5 +63,5 @@ class F1_ner(F1_abc):
             bi_p = sum(tok_p in ('B', 'I') for tok_p in p)
 
             self.A += inter
-            self.B += bi_g
-            self.C += bi_p
+            self.B += bi_p
+            self.C += bi_g

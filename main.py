@@ -58,7 +58,10 @@ class Runner(object):
         return m[name]
 
     def _init_model(self):
-        self.model = MultiHeadSelection(self.hyper).cuda(self.gpu)
+        if self.gpu == -1:  # no gpu
+            self.model = MultiHeadSelection(self.hyper)
+        else:
+            self.model = MultiHeadSelection(self.hyper).cuda(self.gpu)
 
     def preprocessing(self):
         if self.exp_name == 'conll_selection_re':
@@ -144,12 +147,13 @@ class Runner(object):
                 pbar.set_description(output['description'](
                     epoch, self.hyper.epoch_num))
 
-            self.save_model(epoch)
+            #self.save_model(epoch)
 
             if epoch % self.hyper.print_epoch == 0 and epoch > 3:
                 self.evaluation()
+                self.save_model(epoch)
 
 
 if __name__ == "__main__":
-    config = Runner(exp_name=args.exp_name)
-    config.run(mode=args.mode)
+    runner = Runner(exp_name=args.exp_name)
+    runner.run(mode=args.mode)
