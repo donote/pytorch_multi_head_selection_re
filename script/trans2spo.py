@@ -35,10 +35,11 @@ def trans2bdie(inputfile, outputfile, all_schemas):
             text = elem.get('text', '')
             jobid = elem.get('job_id', 0)
             ann = elem.get('ann', [])
-            spo_list, rel_schames = ann2spo(text, ann)
+            spo_list, rel_schame = ann2spo(text, ann)
             elem_new = {'jobid': jobid, 'text': text, 'spo_list': spo_list}
             out_fd.write(json.dumps(elem_new, ensure_ascii=False))
             out_fd.write('\n')
+            rel_schames |= rel_schame
 
     with codecs.open(all_schemas, mode='w', encoding='utf8') as ofd:
         for e in rel_schames:
