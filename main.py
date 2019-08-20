@@ -13,12 +13,14 @@ from tqdm import tqdm
 from torch.optim import Adam, SGD
 from pytorch_transformers import AdamW, WarmupLinearSchedule
 
-from lib.preprocessings import Chinese_selection_preprocessing, Conll_selection_preprocessing, Conll_bert_preprocessing
-from lib.dataloaders import Selection_Dataset, Selection_loader
-from lib.metrics import F1_triplet, F1_ner
-from lib.models import MultiHeadSelection
-from lib.config import Hyper
-
+from lib.preprocessings.chinese_selection import Chinese_selection_preprocessing
+from lib.preprocessings.conll_selection import Conll_selection_preprocessing
+from lib.preprocessings.conll_bert_selecetion import Conll_bert_preprocessing
+from lib.dataloaders.selection_loader import Selection_Dataset, Selection_loader
+from lib.metrics.F1_score import F1_triplet, F1_ner
+from lib.models.selection import MultiHeadSelection
+from lib.config.hyper import Hyper
+from lib.preprocessings.medical_selection import Medical_selection_preprocessing
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--exp_name',
@@ -70,6 +72,9 @@ class Runner(object):
             self.preprocessor = Chinese_selection_preprocessing(self.hyper)
         elif self.exp_name == 'conll_bert_re':
             self.preprocessor = Conll_bert_preprocessing(self.hyper)
+        elif self.exp_name == 'medical_selection_re':
+            self.preprocessor = Medical_selection_preprocessing(self.hyper)
+
         self.preprocessor.gen_relation_vocab()
         self.preprocessor.gen_all_data()
         self.preprocessor.gen_vocab(min_freq=1)

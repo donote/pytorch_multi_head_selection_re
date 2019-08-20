@@ -86,8 +86,8 @@ def ann2spo(text, ann):
                 'object_type':  word_id_idx[tid]['entityTag'],
                 'subject': text[fid_s:fid_e],
                 'object':  text[tid_s:tid_e],
-                'subject_position': [fid_s, fid_e],
-                'object_position': [tid_s, tid_e],
+                'subject_pos': [fid_s, fid_e],
+                'object_pos': [tid_s, tid_e],
                 }
         result.append(elem)
         rel_schames.append(json.dumps({"subject_type": word_id_idx[fid]['entityTag'],
