@@ -122,11 +122,9 @@ class MultiHeadSelection(nn.Module):
     def description(epoch, epoch_num, output):
         return "L: {:.2f}, L_crf: {:.2f}, L_selection: {:.2f}, epoch: {}/{}:".format(
             output['loss'].item(), output['crf_loss'].item(),
-            output['selection_loss'].item(), epoch, epoch_num)
+            output['selection_loss'].item(), epoch+1, epoch_num)
 
     def forward(self, sample, is_train: bool) -> Dict[str, torch.Tensor]:
-
-        import pdb;pdb.set_trace()
         if self.gpu == -1:
             tokens = sample.tokens_id
             selection_gold = sample.selection_id
@@ -138,7 +136,6 @@ class MultiHeadSelection(nn.Module):
 
         text_list = sample.text
         spo_gold = sample.spo_gold
-
         bio_text = sample.bio
 
         if self.hyper.cell_name in ('gru', 'lstm'):
@@ -177,11 +174,8 @@ class MultiHeadSelection(nn.Module):
         else:
             raise ValueError('unexpected encoder name!')
         emi = self.emission(o)
-
         output = {}
-
         crf_loss = 0
-
         if is_train:
             crf_loss = -self.tagger(emi, bio_gold,
                                     mask=bio_mask, reduction='mean')
@@ -201,7 +195,6 @@ class MultiHeadSelection(nn.Module):
                 bio_gold = torch.tensor(temp_tag).cuda(self.gpu)
 
         tag_emb = self.bio_emb(bio_gold)
-
         o = torch.cat((o, tag_emb), dim=2)
 
         # forward multi head selection
@@ -285,6 +278,7 @@ class MultiHeadSelection(nn.Module):
             tags = list(map(lambda x: reversed_bio_vocab[x], sequence_tags[b]))
             object = find_entity(o, text_list[b], tags)
             subject = find_entity(s, text_list[b], tags)
+            #print('predicate:{}\tobject:{}\tsubject:{}'.format(predicate, object, subject))
 
             assert object != '' and subject != ''
 

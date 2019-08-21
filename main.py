@@ -50,12 +50,15 @@ class Runner(object):
         self.ner_metrics = F1_ner()
         self.optimizer = None
         self.model = None
+        self.opt_lr = 0.01
+        if getattr(self.hyper, 'lr'):
+            self.opt_lr = self.hyper.lr
 
     def _optimizer(self, name, model):
         m = {
-            'adam': Adam(model.parameters()),
-            'sgd': SGD(model.parameters(), lr=0.5),
-            'adamw': AdamW(model.parameters())
+        'adam': Adam(model.parameters(), lr = self.opt_lr),
+        'sgd': SGD(model.parameters(), lr = self.opt_lr),
+        'adamw': AdamW(model.parameters(), lr = self.opt_lr)
         }
         return m[name]
 
@@ -121,7 +124,6 @@ class Runner(object):
                 output = self.model(sample, is_train=False)
                 self.triplet_metrics(output['selection_triplets'], output['spo_gold'])
                 self.ner_metrics(output['gold_tags'], output['decoded_tag'])
-
             triplet_result = self.triplet_metrics.get_metric()
             ner_result = self.ner_metrics.get_metric()
             print('Triplets-> ' +  ', '.join([
@@ -131,6 +133,7 @@ class Runner(object):
                 "%s: %.4f" % (name[0], value)
                 for name, value in ner_result.items() if not name.startswith("_")
             ]))
+        return triplet_result['fscore'], ner_result['fscore']
 
     def train(self):
         train_set = Selection_Dataset(self.hyper, self.hyper.train)
@@ -142,7 +145,6 @@ class Runner(object):
                         total=len(loader))
 
             for batch_idx, sample in pbar:
-
                 self.optimizer.zero_grad()
                 output = self.model(sample, is_train=True)
                 loss = output['loss']
@@ -152,11 +154,14 @@ class Runner(object):
                 pbar.set_description(output['description'](
                     epoch, self.hyper.epoch_num))
 
-            #self.save_model(epoch)
-
-            if epoch % self.hyper.print_epoch == 0 and epoch > 3:
-                self.evaluation()
-                self.save_model(epoch)
+            epoch_best, spo_f1_best = 0, 0.
+            if (epoch + 1) % self.hyper.print_epoch == 0:
+                spo_f1, _ = self.evaluation()
+                if spo_f1 > spo_f1_best:
+                    spo_f1_best = spo_f1 
+                    epoch_best = epoch + 1
+                    print('====Best SPO F1 in Epoch={}===='.format(epoch_best))
+                    self.save_model(epoch_best)
 
 
 if __name__ == "__main__":

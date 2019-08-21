@@ -6,20 +6,21 @@ from overrides import overrides
 
 class F1_abc(object):
     def __init__(self):
-        self.A = 1e-10
-        self.B = 1e-10
-        self.C = 1e-10
+        self.A = 0
+        self.B = 0
+        self.C = 0
 
     def reset(self) -> None:
-        self.A = 1e-10
-        self.B = 1e-10
-        self.C = 1e-10
+        self.A = 0
+        self.B = 0
+        self.C = 0
 
     def get_metric(self, reset: bool = False):
         if reset:
             self.reset()
-
-        f1, p, r = 2 * self.A / (self.B + self.C), self.A / self.B, self.A / self.C
+        p = self.A / self.B if self.B > 0 else 0.
+        r = self.A / self.C if self.C > 0 else 0.
+        f1 = 2 * p * r / (p + r) if (p+r) > 0 else 0.
         result = {"precision": p, "recall": r, "fscore": f1}
 
         return result

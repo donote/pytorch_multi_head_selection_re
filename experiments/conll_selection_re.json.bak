@@ -17,8 +17,7 @@
     "threshold": 0.5,
     "activation": "tanh",
     "optimizer": "adam",
-    "lr": 1e-3,
-    "epoch_num": 30,
+    "epoch_num": 150,
     "train_batch": 16,
     "eval_batch": 32,
     "gpu": 1

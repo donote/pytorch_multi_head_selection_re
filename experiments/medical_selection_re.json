@@ -7,7 +7,7 @@
     "dev": "dev.txt",
     "test": "test.txt",
     "relation_vocab": "relation_vocab.json",
-    "print_epoch": 3,
+    "print_epoch": 5,
     "evaluation_epoch":27,
     "max_text_len": 300,
     "cell_name": "lstm",
@@ -18,8 +18,9 @@
     "threshold": 0.5,
     "activation": "tanh",
     "optimizer": "adam",
-    "epoch_num": 30,
+    "lr": 1e-10,
+    "epoch_num": 100,
     "train_batch": 20,
     "eval_batch": 20,
-    "gpu":1
+    "gpu":0
 }
