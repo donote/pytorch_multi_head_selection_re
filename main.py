@@ -139,6 +139,9 @@ class Runner(object):
         train_set = Selection_Dataset(self.hyper, self.hyper.train)
         loader = Selection_loader(train_set, batch_size=self.hyper.train_batch, pin_memory=True)
 
+        if getattr(self.hyper, 'resume_model') and self.hyper.resume_model != 0:
+            self.load_model(self.hyper.resume_model)
+
         for epoch in range(self.hyper.epoch_num):
             self.model.train()
             pbar = tqdm(enumerate(BackgroundGenerator(loader)),

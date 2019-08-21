@@ -28,6 +28,7 @@ class Hyper(object):
         self.train_batch: int
         self.eval_batch: int
         self.lr: float
+        self.resume_model: int 
 
         self.__dict__ = json.load(open(path, 'r'))
 
