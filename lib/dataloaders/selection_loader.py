@@ -30,6 +30,7 @@ class Selection_Dataset(Dataset):
         self.text_list = []
         self.bio_list = []
         self.spo_list = []
+        self.jobid_list = []
 
         # for bert only
         self.bert_tokenizer = BertTokenizer.from_pretrained(
@@ -43,6 +44,7 @@ class Selection_Dataset(Dataset):
             self.text_list.append(instance['text'])
             self.bio_list.append(instance['bio'])
             self.spo_list.append(instance['spo_list'])
+            self.jobid_list.append(instance.get('job_id', 0))
 
     def __getitem__(self, index):
         selection = self.selection_list[index]

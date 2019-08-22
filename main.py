@@ -2,7 +2,7 @@ import os
 import json
 import time
 import argparse
-
+import codecs
 import torch
 
 from typing import Dict, List, Tuple, Set, Optional
@@ -114,6 +114,22 @@ class Runner(object):
             self.model.state_dict(),
             os.path.join(self.model_dir, self.exp_name + '_' + str(epoch)))
 
+    @staticmethod
+    def predict_result_save(text_list, results, jobid=None):
+        """
+        function: 将预测结果以spo格式写入文件
+        text_list: tuple(str,)
+        results: list(list(dict, ), )
+        """
+        result_file_tmp = './tmp/results_json.txt'
+        with codecs.open(result_file_tmp, mode='w', encoding='utf8') as fd:
+            for i in range(len(text_list)):
+                elem = {'text': text_list[i], 'spo_list_predict': results[i]}
+                if isinstance(jobid, list):
+                    elem['job_id'] = jobid[i]
+            fd.write(json.dumps(elem, ensure_ascii=False, indent=4))
+            fd.write('\n-------------------------------------------\n')
+
     def evaluation(self):
         dev_set = Selection_Dataset(self.hyper, self.hyper.dev)
         loader = Selection_loader(dev_set, batch_size=self.hyper.eval_batch, pin_memory=True)
@@ -127,6 +143,8 @@ class Runner(object):
                 output = self.model(sample, is_train=False)
                 self.triplet_metrics(output['selection_triplets'], output['spo_gold'])
                 self.ner_metrics(output['gold_tags'], output['decoded_tag'])
+                self.predict_result_save(sample.text, output['selection_triplets'], jobid=sample.job_id)
+
             triplet_result = self.triplet_metrics.get_metric()
             ner_result = self.ner_metrics.get_metric()
             print('Triplets-> ' +  ', '.join([
@@ -174,7 +192,7 @@ class Runner(object):
                 else:
                     patient_cnt += 1
             if patient_cnt >= self.patient:
-               break
+                break
 
 
 if __name__ == "__main__":
