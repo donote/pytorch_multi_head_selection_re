@@ -174,7 +174,7 @@ class Runner(object):
                 else:
                     patient_cnt += 1
             if patient_cnt >= self.patient:
-               break
+                break
 
 
 if __name__ == "__main__":
