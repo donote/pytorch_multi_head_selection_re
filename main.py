@@ -51,8 +51,11 @@ class Runner(object):
         self.optimizer = None
         self.model = None
         self.opt_lr = 0.01
+        self.patient = 10000
         if getattr(self.hyper, 'lr'):
             self.opt_lr = self.hyper.lr
+        if getattr(self.hyper, 'patient'):
+            self.patient= self.hyper.patient
 
     def _optimizer(self, name, model):
         m = {
@@ -141,7 +144,9 @@ class Runner(object):
 
         if getattr(self.hyper, 'resume_model') and self.hyper.resume_model != 0:
             self.load_model(self.hyper.resume_model)
-
+        
+        patient_cnt = 0
+        epoch_best, spo_f1_best = 0, 0.
         for epoch in range(self.hyper.epoch_num):
             self.model.train()
             pbar = tqdm(enumerate(BackgroundGenerator(loader)),
@@ -157,7 +162,7 @@ class Runner(object):
                 pbar.set_description(output['description'](
                     epoch, self.hyper.epoch_num))
 
-            epoch_best, spo_f1_best = 0, 0.
+            # 注意这里不是连续eval，而是在print_epoch间隔时做的eval
             if (epoch + 1) % self.hyper.print_epoch == 0:
                 spo_f1, _ = self.evaluation()
                 if spo_f1 > spo_f1_best:
@@ -165,8 +170,14 @@ class Runner(object):
                     epoch_best = epoch + 1
                     print('====Best SPO F1 in Epoch={}===='.format(epoch_best))
                     self.save_model(epoch_best)
+                    patient_cnt = 0
+                else:
+                    patient_cnt += 1
+            if patient_cnt >= self.patient:
+               break
 
 
 if __name__ == "__main__":
     runner = Runner(exp_name=args.exp_name)
     runner.run(mode=args.mode)
+
