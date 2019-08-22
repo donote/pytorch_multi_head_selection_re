@@ -81,6 +81,7 @@ class Medical_selection_preprocessing(object):
             return None
         instance = json.loads(line)
         text = instance['text']
+        jobid = instance.get('jobid', 0)
 
         bio = None
         selection = None
@@ -104,7 +105,8 @@ class Medical_selection_preprocessing(object):
             'text': text,
             'spo_list': spo_list,
             'bio': bio,
-            'selection': selection
+            'selection': selection,
+            'jobid': jobid
         }
         return json.dumps(result, ensure_ascii=False)
 

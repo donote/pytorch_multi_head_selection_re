@@ -1,6 +1,7 @@
 import os
 import json
 import time
+from datetime import datetime
 import argparse
 import codecs
 import torch
@@ -115,20 +116,18 @@ class Runner(object):
             os.path.join(self.model_dir, self.exp_name + '_' + str(epoch)))
 
     @staticmethod
-    def predict_result_save(text_list, results, jobid=None):
+    def predict_result_save(fd, text_list, results, jobid=None):
         """
         function: 将预测结果以spo格式写入文件
         text_list: tuple(str,)
         results: list(list(dict, ), )
         """
-        result_file_tmp = './tmp/results_json.txt'
-        with codecs.open(result_file_tmp, mode='w', encoding='utf8') as fd:
-            for i in range(len(text_list)):
-                elem = {'text': text_list[i], 'spo_list_predict': results[i]}
-                if isinstance(jobid, list):
-                    elem['job_id'] = jobid[i]
+        for i in range(len(text_list)):
+            elem = {'text': text_list[i], 'spo_list_predict': results[i]}
+            if isinstance(jobid, tuple):
+                elem['job_id'] = jobid[i]
             fd.write(json.dumps(elem, ensure_ascii=False, indent=4))
-            fd.write('\n-------------------------------------------\n')
+            fd.write('\n====\n')
 
     def evaluation(self):
         dev_set = Selection_Dataset(self.hyper, self.hyper.dev)
@@ -138,12 +137,15 @@ class Runner(object):
 
         pbar = tqdm(enumerate(BackgroundGenerator(loader)), total=len(loader))
 
+        result_file_tmp = '/tmp/results_json.{}.txt'.format(datetime.strftime(datetime.now(), '%Y-%m-%d'))
+        fd = codecs.open(result_file_tmp, mode='w', encoding='utf8')
+
         with torch.no_grad():
             for batch_ndx, sample in pbar:
                 output = self.model(sample, is_train=False)
                 self.triplet_metrics(output['selection_triplets'], output['spo_gold'])
                 self.ner_metrics(output['gold_tags'], output['decoded_tag'])
-                self.predict_result_save(sample.text, output['selection_triplets'], jobid=sample.job_id)
+                self.predict_result_save(fd, sample.text, output['selection_triplets'], jobid=sample.jobid)
 
             triplet_result = self.triplet_metrics.get_metric()
             ner_result = self.ner_metrics.get_metric()
@@ -154,6 +156,7 @@ class Runner(object):
                 "%s: %.4f" % (name[0], value)
                 for name, value in ner_result.items() if not name.startswith("_")
             ]))
+        fd.close()
         return triplet_result['fscore'], ner_result['fscore']
 
     def train(self):

@@ -44,13 +44,14 @@ class Selection_Dataset(Dataset):
             self.text_list.append(instance['text'])
             self.bio_list.append(instance['bio'])
             self.spo_list.append(instance['spo_list'])
-            self.jobid_list.append(instance.get('job_id', 0))
+            self.jobid_list.append(instance.get('jobid', 0))
 
     def __getitem__(self, index):
         selection = self.selection_list[index]
         text = self.text_list[index]
         bio = self.bio_list[index]
         spo = self.spo_list[index]
+        jobid = self.jobid_list[index]
         if self.hyper.cell_name == 'bert':
             text, bio, selection = self.pad_bert(text, bio, selection)
             tokens_id = torch.tensor(
@@ -60,7 +61,7 @@ class Selection_Dataset(Dataset):
         bio_id = self.bio2tensor(bio)
         selection_id = self.selection2tensor(text, selection)
 
-        return tokens_id, bio_id, selection_id, len(text), spo, text, bio
+        return tokens_id, bio_id, selection_id, len(text), spo, text, bio, jobid
 
     def __len__(self):
         return len(self.text_list)
@@ -124,6 +125,7 @@ class Batch_reader(object):
         self.spo_gold = transposed_data[4]
         self.text = transposed_data[5]
         self.bio = transposed_data[6]
+        self.jobid = transposed_data[7]
 
     def pin_memory(self):
         self.tokens_id = self.tokens_id.pin_memory()
