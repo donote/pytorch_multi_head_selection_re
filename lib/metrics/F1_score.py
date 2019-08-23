@@ -11,7 +11,7 @@ class F1_abc(object):
         self.B = 0
         self.C = 0
         self.ABC = namedtuple('ABC', ['A', 'B', 'C'])
-        self.rel_detail = defaultdict(self.ABC(A=0, B=0, C=0))
+        self.rel_detail = defaultdict(list)
 
     def reset(self) -> None:
         self.A = 0
@@ -33,12 +33,20 @@ class F1_abc(object):
         prf1 = {"precision": p, "recall": r, "fscore": f1}
         return prf1
 
+    @staticmethod
+    def calc_abc(A, B, C):
+        p = A / B if B > 0 else 0.
+        r = A / C if C > 0 else 0.
+        f1 = 2 * p * r / (p + r) if (p+r) > 0 else 0.
+        prf1 = {"precision": p, "recall": r, "fscore": f1, "ABC": "{}:{}:{}".format(A, B, C), "sum":A+B+C}
+        return prf1
+
     def get_metric_detail(self, reset: bool = False):
         if reset:
             self.reset()
         results = {}
-        for k, v in self.rel_detail:
-            results[k] = self.calc(v.A, v.B, v.C)
+        for k, v in self.rel_detail.items():
+            results[k] = self.calc_abc(v[0], v[1], v[2])
         return results
 
     def __call__(self, predictions,
@@ -68,34 +76,28 @@ class F1_triplet(F1_abc):
             self.C += len(g_set)
 
             # for rel detail
-            g_set_rel, p_set_rel = {}, {}
+            g_set_rel, p_set_rel = defaultdict(list), defaultdict(list)
             try:
-                g_set_tmp = [(gg['predicate'], '_'.join((gg['object'], gg['predicate'], gg['subject']))) for gg in g]
-                p_set_tmp = [(pp['predicate'], '_'.join((pp['object'], pp['predicate'], pp['subject']))) for pp in p]
+                for gg in g:
+                    g_set_rel[gg['predicate']].append('_'.join((gg['object'], gg['predicate'], gg['subject']))) 
+                for pp in p:
+                    p_set_rel[pp['predicate']].append('_'.join((pp['object'], pp['predicate'], pp['subject']))) 
             except:
-                g_set_tmp = [(gg['predicate'], '_'.join((''.join(gg['object']), gg['predicate'], ''.join(gg['subject'])))) for gg in g]
-                p_set_tmp = [(pp['predicate'], '_'.join((''.join(pp['object']), pp['predicate'], ''.join(pp['subject'])))) for pp in p]
+                for gg in g:
+                    g_set_rel[gg['predicate']].append('_'.join((''.join(gg['object']), gg['predicate'], ''.join(gg['subject']))))
+                for pp in p:
+                    p_set_rel[gg['predicate']].append('_'.join((''.join(pp['object']), pp['predicate'], ''.join(pp['subject']))))
 
-            for elem in g_set_tmp:
-                if elem[0] in g_set_rel:
-                    g_set_rel[elem[0]] |= set(elem[1])
-                else:
-                    g_set_rel[elem[0]] = set(elem[1])
-            for elem in p_set_tmp:
-                if elem[0] in p_set_rel:
-                    p_set_rel[elem[0]] |= set(elem[1])
-                else:
-                    p_set_rel[elem[0]] = set(elem[1])
+            rels = set(list(g_set_rel.keys()) + list(p_set_rel.keys()))
+            for k in rels:
+                if k not in self.rel_detail:
+                    self.rel_detail[k] = [0, 0, 0]
 
-            rel = set(g_set_tmp.keys()) | set(p_set_tmp.keys())
-            for k in rel:
-                self.rel_detail[k] = self.ABC(0, 0, 0)
-
-            for k in rel:
-                vg, vp = g_set_tmp.get(k, set([])), p_set_tmp.get(k, set([]))
-                self.rel_detail[k].A += len(vg & vp)
-                self.rel_detail[k].B + len(vg & vp)
-                self.rel_detail[k].C + len(vg & vp)
+            for k in rels:
+                vg, vp = g_set_rel.get(k, []), p_set_rel.get(k, [])
+                self.rel_detail[k][0] += len(set(vg) & set(vp))
+                self.rel_detail[k][1] += len(set(vp))
+                self.rel_detail[k][2] += len(set(vg))
 
 
 class F1_ner(F1_abc):

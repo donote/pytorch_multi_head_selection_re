@@ -158,8 +158,15 @@ class Runner(object):
             ]))
         fd.close()
         triplet_result_detail = self.triplet_metrics.get_metric_detail()
+        self.print_eval_result(triplet_result_detail)
 
         return triplet_result['fscore'], ner_result['fscore']
+
+    @staticmethod
+    def print_eval_result(details):
+        for k, v in details.items():
+            print('%s:\tp: %.4f\tr: %.4f\tf1: %.4f\tatg: %s' %(k, 
+            v['precision'], v['recall'], v['fscore'], v['ABC']))
 
     def train(self):
         train_set = Selection_Dataset(self.hyper, self.hyper.train)
