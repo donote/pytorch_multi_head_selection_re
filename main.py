@@ -157,6 +157,8 @@ class Runner(object):
                 for name, value in ner_result.items() if not name.startswith("_")
             ]))
         fd.close()
+        triplet_result_detail = self.triplet_metrics.get_metric_detail()
+
         return triplet_result['fscore'], ner_result['fscore']
 
     def train(self):
