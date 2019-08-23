@@ -152,6 +152,7 @@ class MultiHeadSelection(nn.Module):
 
         if self.hyper.cell_name in ('lstm', 'gru'):
             embedded = self.word_embeddings(tokens)
+            # pad没有mask掉 !
             o, h = self.encoder(embedded)
 
             o = (lambda a: sum(a) / 2)(torch.split(o,
