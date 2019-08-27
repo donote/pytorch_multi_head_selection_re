@@ -15,9 +15,10 @@ from pytorch_transformers import *
 
 
 class Selection_Dataset(Dataset):
-    def __init__(self, hyper, dataset):
+    def __init__(self, hyper, dataset, type='train|eval'):
         self.hyper = hyper
         self.data_root = hyper.data_root
+        self.type = type
 
         self.word_vocab = json.load(
             open(os.path.join(self.data_root, 'word_vocab.json'), 'r'))
@@ -39,16 +40,22 @@ class Selection_Dataset(Dataset):
         for line in open(os.path.join(self.data_root, dataset), 'r'):
             line = line.strip("\n")
             instance = json.loads(line)
+            self.text_list.append(instance['text'])
+            if self.type == 'predict':
+                continue
 
             self.selection_list.append(instance['selection'])
-            self.text_list.append(instance['text'])
             self.bio_list.append(instance['bio'])
             self.spo_list.append(instance['spo_list'])
             self.jobid_list.append(instance.get('jobid', 0))
 
     def __getitem__(self, index):
-        selection = self.selection_list[index]
         text = self.text_list[index]
+        if self.type == 'predict':
+            tokens_id = self.text2tensor(text)
+            return tokens_id, len(text), text
+
+        selection = self.selection_list[index]
         bio = self.bio_list[index]
         spo = self.spo_list[index]
         jobid = self.jobid_list[index]
@@ -139,3 +146,25 @@ def collate_fn(batch):
 
 
 Selection_loader = partial(DataLoader, collate_fn=collate_fn, pin_memory=True)
+
+
+# for predict ...
+class Batch_reader_predict(object):
+    def __init__(self, data):
+        transposed_data = list(zip(*data))
+        # tokens_id, len(text), text
+
+        self.tokens_id = pad_sequence(transposed_data[0], batch_first=True)
+        self.length = transposed_data[1]
+        self.text = transposed_data[2]
+
+    def pin_memory(self):
+        self.tokens_id = self.tokens_id.pin_memory()
+        return self
+
+
+def collate_fn_predict(batch):
+    return Batch_reader_predict(batch)
+
+
+Selection_loader_predict = partial(DataLoader, collate_fn=collate_fn_predict, pin_memory=True)

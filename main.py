@@ -33,7 +33,7 @@ parser.add_argument('--mode',
                     '-m',
                     type=str,
                     default='preprocessing',
-                    help='preprocessing|train|evaluation')
+                    help='preprocessing|train|evaluation|predict')
 args = parser.parse_args()
 
 
@@ -99,6 +99,10 @@ class Runner(object):
             self._init_model()
             self.load_model(epoch=self.hyper.evaluation_epoch)
             self.evaluation()
+        elif mode == 'predict':
+            self._init_model()
+            self.load_model(epoch=self.hyper.evaluation_epoch)
+            self.predict()
         else:
             raise ValueError('invalid mode')
 
@@ -205,6 +209,25 @@ class Runner(object):
                     patient_cnt += 1
             if patient_cnt >= self.patient:
                 break
+
+    def predict(self):
+        """
+        只对text文本进行预测，无标注数据
+        """
+        dev_set = Selection_Dataset(self.hyper, self.hyper.test, type='predict')
+        loader = Selection_loader_predict(dev_set, batch_size=self.hyper.eval_batch, pin_memory=True)
+        self.triplet_metrics.reset()
+        self.model.eval()
+
+        pbar = tqdm(enumerate(BackgroundGenerator(loader)), total=len(loader))
+
+        result_file_tmp = '/tmp/results_json.{}.txt'.format(datetime.strftime(datetime.now(), '%Y-%m-%d'))
+        fd = codecs.open(result_file_tmp, mode='w', encoding='utf8')
+        with torch.no_grad():
+            for batch_ndx, sample in pbar:
+                output = self.model.predict(sample, is_train=False)
+                self.predict_result_save(fd, sample.text, output['selection_triplets'])
+        fd.close()
 
 
 if __name__ == "__main__":
