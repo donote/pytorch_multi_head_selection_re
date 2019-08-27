@@ -69,3 +69,6 @@ They use pretrained char-word embedding while we use word embedding initialized 
 # TODO
 
 * Tune the hyperparameters for CoNLL04
+
+# Code logic
+![code_logic](./images/figure01.png)
