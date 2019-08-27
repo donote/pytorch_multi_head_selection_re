@@ -17,7 +17,7 @@ from pytorch_transformers import AdamW, WarmupLinearSchedule
 from lib.preprocessings.chinese_selection import Chinese_selection_preprocessing
 from lib.preprocessings.conll_selection import Conll_selection_preprocessing
 from lib.preprocessings.conll_bert_selecetion import Conll_bert_preprocessing
-from lib.dataloaders.selection_loader import Selection_Dataset, Selection_loader
+from lib.dataloaders.selection_loader import Selection_Dataset, Selection_loader, Selection_loader_predict
 from lib.metrics.F1_score import F1_triplet, F1_ner
 from lib.models.selection import MultiHeadSelection
 from lib.config.hyper import Hyper
@@ -225,7 +225,7 @@ class Runner(object):
         fd = codecs.open(result_file_tmp, mode='w', encoding='utf8')
         with torch.no_grad():
             for batch_ndx, sample in pbar:
-                output = self.model.predict(sample, is_train=False)
+                output = self.model.predict(sample)
                 self.predict_result_save(fd, sample.text, output['selection_triplets'])
         fd.close()
 

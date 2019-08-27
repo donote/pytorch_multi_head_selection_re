@@ -168,9 +168,10 @@ class MultiHeadSelection(nn.Module):
 
         output['decoded_tag'] = [list(map(lambda x: self.id2bio[x], tags)) for tags in decoded_tag]
         temp_tag = copy.deepcopy(decoded_tag)
+        max_size = max(max([len(i) for i in decoded_tag]), self.hyper.max_text_len)
         for line in temp_tag:
             line.extend([self.bio_vocab['<pad>']] *
-                        (self.hyper.max_text_len - len(line)))
+                        (max_size - len(line)))
         if self.gpu == -1:
             bio_gold = torch.tensor(temp_tag)
         else:
