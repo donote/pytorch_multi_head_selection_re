@@ -17,7 +17,7 @@ from pytorch_transformers import AdamW, WarmupLinearSchedule
 from lib.preprocessings.chinese_selection import Chinese_selection_preprocessing
 from lib.preprocessings.conll_selection import Conll_selection_preprocessing
 from lib.preprocessings.conll_bert_selecetion import Conll_bert_preprocessing
-from lib.dataloaders.selection_loader import Selection_Dataset, Selection_loader
+from lib.dataloaders.selection_loader import Selection_Dataset, Selection_loader, Selection_loader_predict
 from lib.metrics.F1_score import F1_triplet, F1_ner
 from lib.models.selection import MultiHeadSelection
 from lib.config.hyper import Hyper
@@ -33,7 +33,7 @@ parser.add_argument('--mode',
                     '-m',
                     type=str,
                     default='preprocessing',
-                    help='preprocessing|train|evaluation')
+                    help='preprocessing|train|evaluation|predict')
 args = parser.parse_args()
 
 
@@ -99,6 +99,10 @@ class Runner(object):
             self._init_model()
             self.load_model(epoch=self.hyper.evaluation_epoch)
             self.evaluation()
+        elif mode == 'predict':
+            self._init_model()
+            self.load_model(epoch=self.hyper.evaluation_epoch)
+            self.predict()
         else:
             raise ValueError('invalid mode')
 
@@ -205,6 +209,25 @@ class Runner(object):
                     patient_cnt += 1
             if patient_cnt >= self.patient:
                 break
+
+    def predict(self):
+        """
+        只对text文本进行预测，无标注数据
+        """
+        dev_set = Selection_Dataset(self.hyper, self.hyper.test, type='predict')
+        loader = Selection_loader_predict(dev_set, batch_size=self.hyper.eval_batch, pin_memory=True)
+        self.triplet_metrics.reset()
+        self.model.eval()
+
+        pbar = tqdm(enumerate(BackgroundGenerator(loader)), total=len(loader))
+
+        result_file_tmp = '/tmp/results_json.{}.txt'.format(datetime.strftime(datetime.now(), '%Y-%m-%d'))
+        fd = codecs.open(result_file_tmp, mode='w', encoding='utf8')
+        with torch.no_grad():
+            for batch_ndx, sample in pbar:
+                output = self.model.predict(sample)
+                self.predict_result_save(fd, sample.text, output['selection_triplets'])
+        fd.close()
 
 
 if __name__ == "__main__":

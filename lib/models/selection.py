@@ -124,6 +124,73 @@ class MultiHeadSelection(nn.Module):
             output['loss'].item(), output['crf_loss'].item(),
             output['selection_loss'].item(), epoch+1, epoch_num)
 
+    def predict(self, sample):
+        # 只用于预测，无标注数据
+        if self.gpu == -1:
+            tokens = sample.tokens_id
+        else:
+            tokens = sample.tokens_id.cuda(self.gpu)
+        text_list = sample.text
+
+        if self.hyper.cell_name in ('gru', 'lstm'):
+            mask = tokens != self.word_vocab['<pad>']  # batch x seq
+            bio_mask = mask
+        elif self.hyper.cell_name in ('bert'):
+            notpad = tokens != self.bert_tokenizer.encode('[PAD]')[0]
+            notcls = tokens != self.bert_tokenizer.encode('[CLS]')[0]
+            notsep = tokens != self.bert_tokenizer.encode('[SEQ]')[0]
+            mask = notpad & notcls & notsep
+            bio_mask = notpad & notsep  # fst token for crf cannot be masked
+        else:
+            raise ValueError('unexpected encoder name!')
+
+        if self.hyper.cell_name in ('lstm', 'gru'):
+            embedded = self.word_embeddings(tokens)
+            # pad没有mask掉 !
+            o, h = self.encoder(embedded)
+            o = (lambda a: sum(a) / 2)(torch.split(o, self.hyper.hidden_size, dim=2))
+        elif self.hyper.cell_name == 'bert':
+            # with torch.no_grad():
+            o = self.encoder(tokens, attention_mask=mask)[0]  # last hidden of BERT
+            # o = self.activation(o)
+            # torch.Size([16, 310, 768])
+            o = self.bert2hidden(o)
+
+            # below for bert+lstm
+            # o, h = self.post_lstm(o)
+            # o = (lambda a: sum(a) / 2)(torch.split(o, self.hyper.hidden_size, dim=2))
+        else:
+            raise ValueError('unexpected encoder name!')
+
+        emi = self.emission(o)
+        output = {}
+        decoded_tag = self.tagger.decode(emissions=emi, mask=bio_mask)
+
+        output['decoded_tag'] = [list(map(lambda x: self.id2bio[x], tags)) for tags in decoded_tag]
+        temp_tag = copy.deepcopy(decoded_tag)
+        max_size = max(max([len(i) for i in decoded_tag]), self.hyper.max_text_len)
+        for line in temp_tag:
+            line.extend([self.bio_vocab['<pad>']] *
+                        (max_size - len(line)))
+        if self.gpu == -1:
+            bio_gold = torch.tensor(temp_tag)
+        else:
+            bio_gold = torch.tensor(temp_tag).cuda(self.gpu)
+
+        tag_emb = self.bio_emb(bio_gold)
+        o = torch.cat((o, tag_emb), dim=2)
+
+        # forward multi head selection
+        B, L, H = o.size()
+        u = self.activation(self.selection_u(o)).unsqueeze(1).expand(B, L, L, -1)
+        v = self.activation(self.selection_v(o)).unsqueeze(2).expand(B, L, L, -1)
+        uv = self.activation(self.selection_uv(torch.cat((u, v), dim=-1)))
+
+        # correct one, map to relation cls
+        selection_logits = torch.einsum('bijh,rh->birj', uv, self.relation_emb.weight)
+        output['selection_triplets'] = self.inference(mask, text_list, decoded_tag, selection_logits)
+        return output
+
     def forward(self, sample, is_train: bool) -> Dict[str, torch.Tensor]:
         if self.gpu == -1:
             tokens = sample.tokens_id
