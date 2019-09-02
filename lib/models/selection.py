@@ -44,11 +44,13 @@ class MultiHeadSelection(nn.Module):
         if hyper.cell_name == 'gru':
             self.encoder = nn.GRU(hyper.emb_size,
                                   hyper.hidden_size,
+                                  num_layers=2,
                                   bidirectional=True,
                                   batch_first=True)
         elif hyper.cell_name == 'lstm':
             self.encoder = nn.LSTM(hyper.emb_size,
                                    hyper.hidden_size,
+                                   num_layers=2,
                                    bidirectional=True,
                                    batch_first=True)
         elif hyper.cell_name == 'bert':

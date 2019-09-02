@@ -133,7 +133,7 @@ class Runner(object):
             fd.write(json.dumps(elem, ensure_ascii=False, indent=4))
             fd.write('\n====\n')
 
-    def evaluation(self):
+    def evaluation(self, fd_eval=None):
         dev_set = Selection_Dataset(self.hyper, self.hyper.dev)
         loader = Selection_loader(dev_set, batch_size=self.hyper.eval_batch, pin_memory=True)
         self.triplet_metrics.reset()
@@ -141,7 +141,7 @@ class Runner(object):
 
         pbar = tqdm(enumerate(BackgroundGenerator(loader)), total=len(loader))
 
-        result_file_tmp = '/tmp/results_json.{}.txt'.format(datetime.strftime(datetime.now(), '%Y-%m-%d'))
+        result_file_tmp = '/tmp/spo_results_json.{}.txt'.format(datetime.strftime(datetime.now(), '%Y-%m-%d'))
         fd = codecs.open(result_file_tmp, mode='w', encoding='utf8')
 
         with torch.no_grad():
@@ -153,13 +153,15 @@ class Runner(object):
 
             triplet_result = self.triplet_metrics.get_metric()
             ner_result = self.ner_metrics.get_metric()
-            print('Triplets-> ' +  ', '.join([
-                "%s: %.4f" % (name[0], value)
-                for name, value in triplet_result.items() if not name.startswith("_")
-            ]) + ' ||' + 'NER->' + ', '.join([
-                "%s: %.4f" % (name[0], value)
-                for name, value in ner_result.items() if not name.startswith("_")
-            ]))
+            eval_info = 'Triplets-> ' +  ', '.join(["%s: %.4f" % (name[0], value) \
+                for name, value in triplet_result.items() if not name.startswith("_")]) \
+                + ' ||' + 'NER->' + ', '.join(["%s: %.4f" % (name[0], value) \
+                for name, value in ner_result.items() if not name.startswith("_")])
+            print(eval_info)
+            if fd_eval:
+                fd_eval.write(eval_info)
+                fd_eval.write('\n')
+                fd_eval.flush()
         fd.close()
         triplet_result_detail = self.triplet_metrics.get_metric_detail()
         self.print_eval_result(triplet_result_detail)
@@ -179,6 +181,9 @@ class Runner(object):
         if getattr(self.hyper, 'resume_model') and self.hyper.resume_model != 0:
             self.load_model(self.hyper.resume_model)
         
+        result_file_eval_tmp = '/tmp/spo_eval.{}.txt'.format(datetime.strftime(datetime.now(), '%Y-%m-%d'))
+        fd_eval = codecs.open(result_file_eval_tmp, mode='w', encoding='utf8')
+
         patient_cnt = 0
         epoch_best, spo_f1_best = 0, 0.
         for epoch in range(self.hyper.epoch_num):
@@ -198,7 +203,7 @@ class Runner(object):
 
             # 注意这里不是连续eval，而是在print_epoch间隔时做的eval
             if (epoch + 1) % self.hyper.print_epoch == 0:
-                spo_f1, _ = self.evaluation()
+                spo_f1, _ = self.evaluation(fd_eval)
                 if spo_f1 > spo_f1_best:
                     spo_f1_best = spo_f1 
                     epoch_best = epoch + 1
@@ -209,6 +214,7 @@ class Runner(object):
                     patient_cnt += 1
             if patient_cnt >= self.patient:
                 break
+        fd_eval.close()
 
     def predict(self):
         """
@@ -221,7 +227,7 @@ class Runner(object):
 
         pbar = tqdm(enumerate(BackgroundGenerator(loader)), total=len(loader))
 
-        result_file_tmp = '/tmp/results_json.{}.txt'.format(datetime.strftime(datetime.now(), '%Y-%m-%d'))
+        result_file_tmp = '/tmp/spo_results_json.{}.txt'.format(datetime.strftime(datetime.now(), '%Y-%m-%d'))
         fd = codecs.open(result_file_tmp, mode='w', encoding='utf8')
         with torch.no_grad():
             for batch_ndx, sample in pbar:

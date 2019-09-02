@@ -38,7 +38,7 @@ def trans2pos(inputfile, outputfile, all_schemas):
 
     # split samples to train/dev/test within 8:1:1
     result = gen_samples(outputfile)
-    print('count of :\t train:{}\tdev:{}\ttest{}'.format(result[0], result[1], result[2]))
+    print('count of :\t train:{}\tdev:{}\ttest:{}'.format(result[0], result[1], result[2]))
 
 
 def gen_samples(outputfile):
