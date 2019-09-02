@@ -59,6 +59,9 @@ class Conll_bert_preprocessing(object):
             self.word_vocab.update(sent)
 
     def prepare_bert(self, result):
+        """
+        使用tokenizer对text划分后不是原来的char纬度了，需要重新计算pos
+        """
 
         def align_pos(text, bert_tokens):
             i = 0
